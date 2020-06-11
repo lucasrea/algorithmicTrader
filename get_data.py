@@ -2,19 +2,6 @@ import datetime
 import pandas as pd
 import yfinance as yf
 from finta import TA
-import numpy as np
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import StandardScaler, LabelEncoder
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import confusion_matrix, classification_report
-from sklearn.neural_network import MLPClassifier
-from sklearn import svm
-from sklearn.cluster import KMeans
-import matplotlib.pyplot as plt
-from scipy.signal import argrelextrema
-
-
-
 
 
 class GetData:
