@@ -13,9 +13,14 @@ class Environment:
 
         self.data = GetData(symbol).format_data()
         self.data_len = len(self.data)
-        self.already_bought = False
+
         self.total_profit = 0
         self.max__profit = 0
+        self.already_bought = False
+        self.buy_count = 0
+        self.sell_count = 0
+        self.history = []
+
 
 
     def get_state(self, t, n):
@@ -49,9 +54,14 @@ class Environment:
 
         reward = 0
         profit = 0
-        if action == 1 and not self.already_bought:  # buy
-            already_bought = True
+
+        if action == 1 :  # Buy only if we already have less than 6 active buy orders
+        # Having a limit on the number of buys is a more realistic way of trading
+
+            self.buy_count += 1
+            self.history.append('B')
             agent.inventory.append(self.data[t])
+
             # Check to see if we could have bought at a better time
             min_count = 0
             for i in range(1, self.WINDOW_LENGTH - 1):
@@ -62,22 +72,26 @@ class Environment:
                     break
 
             # For every better option, subtract 0.1 from a total of 1 possible point
-            reward = 1 - (0.1 * min_count)
+            reward = 0.5 - (0.1 * min_count)
 
-            # print('Buy at ' + str(self.data[t]))
+            #print('Buy at ' + str(self.data[t]))
             # print(str(min_count) + ' possible buys that were better, got a reward of ' + str(reward) + ' out of 1 \n')
 
         elif action == 2 and len(agent.inventory) > 0:  # sell
-
-
-            bought_price = agent.inventory.pop(0)
+            self.history.append('S')
+            self.sell_count += 1
+            bought_price = min(agent.inventory)
+            agent.inventory.remove(bought_price)
             reward = max(self.data[t] - bought_price, 0)
             profit = self.data[t] - bought_price
+
             self.total_profit += profit
+
+            self.already_bought = False
 
             if profit > 0: # We made profit, it's at least a decent trade
                 # If we were profitable, we add an immediate 0.7 / 1.0
-                reward = 0.7
+                reward = 0.8 * profit
 
             # Check if we could have bought at a higher price
             max_count = 0
@@ -89,12 +103,12 @@ class Environment:
                     break
 
             # For every price that was potentially higher, we subtract 0.03 from a possible 0.3 for this component
-            reward += 0.3 - (0.03 * max_count)
+            reward += 0.2 - (0.02 * max_count)
 
-            already_bought = False
-            # print('Sold at ' + str(self.data[t]))
+
+            #print('Sold at ' + str(self.data[t]))
             # print(str(max_count) + ' possible buys that were better, got a reward of ' + str(reward) + ' out of 1 \n')
-
+            #print('Profit of : ' + str(profit))
         return reward, profit
 
 

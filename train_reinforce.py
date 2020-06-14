@@ -3,9 +3,9 @@ from get_data import GetData
 from env import Environment
 import pandas
 
-WINDOW_SIZE = 10
+WINDOW_SIZE = 20
 EPOCHS = 200
-BATCH_SIZE = 32
+BATCH_SIZE = 75
 
 def train_stock_model(agent, stockenv):
 
@@ -16,11 +16,13 @@ def train_stock_model(agent, stockenv):
         state = stockenv.get_state(0, WINDOW_SIZE + 1)
 
         agent.inventory = []
-        global already_bought
-        already_bought = False
-
         epispde_profit = 0
+        stockenv.buy_count = 0
+        stockenv.sell_count = 0
+        stockenv.history = []
+
         for t in range(stockenv.data_len-1):
+
             action = agent.act(state)
             #print(action)
             next_state = stockenv.get_state(t + 1, WINDOW_SIZE + 1)
@@ -36,8 +38,11 @@ def train_stock_model(agent, stockenv):
                 print("Total profit: " + str(total_profit))
             if len(agent.memory) > BATCH_SIZE:
                 agent.replay(BATCH_SIZE)
+
         print('    Net Profit :  ' + str(stockenv.total_profit))
-        print('Episode Profit :  ' + str(epispde_profit) + '\n')
+        print('Episode Profit :  ' + str(epispde_profit))
+        print('History is : ', stockenv.history)
+        print('Buys : ' + str(stockenv.buy_count) +'     Sells: ' + str(stockenv.sell_count) + '\n')
 
 
 
