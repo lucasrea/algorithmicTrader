@@ -10,7 +10,6 @@ import pytz, holidays
 import yfinance as yf
 import time
 import os
-from get_data import GetData
 
 
 # Global data and DS, dict to keep stocks and their current bullish or bearish status
@@ -56,6 +55,8 @@ class Portfolio:
         """
 
         self.filename = username + "_trades.json"
+        self.PCT_OF_MAX = 0.09
+
         if os.path.exists(self.filename):
             print("File exists for " + username)
 
@@ -76,12 +77,13 @@ class Portfolio:
             self.write_to_json()
 
 
-    def place_buy_order(self, symbol, quantity, price):
+    def place_buy_order(self, symbol, price):
         """
         Function that takes the steps to process a buy
             - remove the amount of: amt = quantity * price, from the users balance
             - add 'quantity' number of shares of 'symbol' (new dictionary key-value to self.stocks)
             - add the total book value (amt) of that specific stock
+            TODO : Add in support that indicates stop loss point
 
         :param symbol: symbol of the stock being bought
         :param quantity: number of shares of the stock
@@ -90,7 +92,10 @@ class Portfolio:
         :return: no return value, function will modify the data and rewrite json to store the info
         """
 
-        amt = quantity * price  # The amount of equity you are adding to your current stake in 'symbol'
+        # Determine the number of shares,
+        max_possible = int(self.balance / price)
+        quantity = int(self.PCT_OF_MAX * max_possible)  # Only allow 5% of the max possible shares to be bought at a time
+        amt = price * quantity
 
         if self.balance >= amt:
             self.balance -= amt
@@ -104,14 +109,27 @@ class Portfolio:
         else:
             print("Insufficient funds to buy " + str(quantity) + " shares of " + str(symbol) + " at " + str(price))
 
-    def place_sell_order(self, symbol, quantity, price):
+    def place_sell_order(self, symbol, price):
+
+
 
         # First make sure we have a sufficient number of shares
         if self.have_stock(symbol):
+
+            # Determine the number of shares,
+            quantity = int(self.PCT_OF_MAX * self.stocks[symbol]['num_shares'])  # Only allow 10% of the max possible shares to be sold at a time
+            amt = price * quantity
+
+            curr_avg = (self.stocks[symbol]['book_value'] / self.stocks[symbol]['num_shares'])
+            diff = (price - curr_avg) / curr_avg
+
+            # if diff < -0.1: # If we are selling at a loss, might as well place a buy order
+            #     self.place_buy_order(symbol, price)
+            #     return
+
             if self.stocks[symbol]['num_shares'] >= quantity:
-                # When deducting the book value, we take the average price per share,
-                # multiply it by the number we are getting rid of, and then subtract from our total
-                self.stocks[symbol]['book_value'] -= ( self.stocks[symbol]['book_value'] / self.stocks[symbol]['num_shares'] ) * quantity
+
+                self.stocks[symbol]['book_value'] -= curr_avg * quantity
                 self.stocks[symbol]['num_shares'] -= quantity
 
                 amt = quantity * price  # Get the amount to return to the account
@@ -137,7 +155,20 @@ class Portfolio:
             return True
         return False
 
+    def get_net_worth(self):
 
+        total_bookval = 0
+        for key in self.stocks.keys():
+            total_bookval += self.stocks[key]['book_value']
+        return self.balance + total_bookval
+
+    def get_balance(self):
+        return self.balance
+
+    def reset_info(self):
+        self.balance = 10000
+        self.stocks = {}
+        self.write_to_json()
 
 def filter_for_day_trading(path):
     """
@@ -189,39 +220,6 @@ def filter_for_day_trading(path):
 
 
 
-if __name__ == "__main__":
-
-    p = Portfolio('lucas')
-
-
-
-
-
-
-    # while (is_market_open()):
-    #     # Just before this, we need to sleep for 60 seconds to wait for more data
-    #     for stock in _stock_list.keys():
-    #         t1 =time.time()
-    #         bull_bear, price = get_data(stock)
-    #         print(stock, bull_bear)
-    #
-    #         if bull_bear != _stock_list[stock]: # There has been a change in momentum, need to buy or sell
-    #             # If we went from True to False => SELL
-    #             if _stock_list[stock] == True:
-    #                 # DO SELL STUFF
-    #                 _stock_list[stock] = False
-    #                 print("SELL "+stock+" at : " + str(price) + '-----' + str(datetime.datetime.now()))
-    #                 print('\n\n')
-    #                 pass
-    #             else:
-    #                 # If we went from False to True => BUY
-    #                 # DO BUY STUFF
-    #                 _stock_list[stock] = True
-    #                 print("BUY "+stock+" at : " + str(price) + '-----' + str(datetime.datetime.now()))
-    #                 print('\n\n')
-    #         t2=time.time()
-    #         print(t2-t1)
-    #     time.sleep(60)
 
 
 

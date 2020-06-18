@@ -1,6 +1,7 @@
 import math
 import numpy as np
 from get_data import GetData
+from trader import Portfolio
 
 
 
@@ -27,6 +28,7 @@ class Environment:
         self.symbol = symbol
         self.data_len = len(self.data)
         self.train = train
+        self.p = Portfolio('lucas')
 
         """
         Parameters that are subject to reset after every training episode
@@ -70,7 +72,27 @@ class Environment:
         return np.array([res])
 
 
-    def determine_reward(self, agent, action, t):
+    def take_action(self, agent, action, t):
+
+        if action == 0:
+            self.history.append('H')
+
+        if action == 1 :  # Buy only if we already have less than 6 active buy orders
+        # Having a limit on the number of buys is a more realistic way of trading
+
+            self.buy_count += 1
+            self.history.append('B')
+            self.p.place_buy_order(self.symbol, self.data[t])
+
+
+        elif action == 2 :  # sell
+
+            self.sell_count += 1
+            self.history.append('S')
+            self.p.place_sell_order(self.symbol, self.data[t])
+
+
+    def step(self, agent, action, t):
         """
         Function that will determine the reward for the agent depending on the action
         *** Only used during training ***
@@ -84,66 +106,21 @@ class Environment:
         :return: reward value, the more positive -> better
         """
 
-        reward = 0
-        profit = 0
+        worth_pre_action = self.p.get_net_worth()
+        self.take_action(agent, action, t)
+        worth_post_action = self.p.get_net_worth()
 
-        if action == 0:
-            self.history.append('H')
-
-        if action == 1:  # Buy only if we already have less than 6 active buy orders
-        # Having a limit on the number of buys is a more realistic way of trading
-
-            self.buy_count += 1
-            self.history.append('B')
-            agent.inventory.append(self.data[t])
-
-            # Check to see if we could have bought at a better time
-            min_count = 0
-            for i in range(1, self.WINDOW_LENGTH - 1):
-                try:
-                    if self.data[t-i:t] < self.data[t]:
-                        min_count += 1
-                except:
-                    break
-
-            # For every better option, subtract 0.1 from a total of 1 possible point
-            #reward = 0.2 - (0.02 * min_count)
-
-            #print('Buy at ' + str(self.data[t]))
-            # print(str(min_count) + ' possible buys that were better, got a reward of ' + str(reward) + ' out of 1 \n')
-
-        elif action == 2 and len(agent.inventory) > 0:  # sell
-
-            bought_price = min(agent.inventory)
-            agent.inventory.remove(bought_price)
-            reward = max(self.data[t] - bought_price, 0)
-            profit = self.data[t] - bought_price
-
-            self.total_profit += profit
-            self.episode_profit += profit
-            self.history.append('S')
-            self.sell_count += 1
+        profit = worth_post_action - worth_pre_action
+        self.episode_profit += profit
 
 
-            #if profit > 0: # We made profit, it's at least a decent trade
-                # If we were profitable, we add an immediate 0.7 / 1.0
-            reward = 0.8 * profit
+        reward = 0.3
+        if profit > 0:
+            reward += math.log(profit, 2) + 1
+        else:
+            reward -= profit
 
-            # Check if we could have bought at a higher price
-            max_count = 0
-            for i in range(1, self.WINDOW_LENGTH - 1):
-                try:
-                    if self.data[t-i:t] < self.data[t]:
-                        max_count += 1
-                except:
-                    break
 
-            # For every price that was potentially higher, we subtract 0.03 from a possible 0.3 for this component
-            reward += 0.2 - (0.02 * max_count)
-
-            #print('Sold at ' + str(self.data[t]))
-            # print(str(max_count) + ' possible buys that were better, got a reward of ' + str(reward) + ' out of 1 \n')
-            #print('Profit of : ' + str(profit))
         return reward, profit
 
 
@@ -159,3 +136,4 @@ class Environment:
         self.sell_count = 0
         self.history = []
         self.episode_profit = 0
+        self.p.reset_info()
