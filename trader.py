@@ -55,7 +55,8 @@ class Portfolio:
         """
 
         self.filename = username + "_trades.json"
-        self.PCT_OF_MAX = 0.09
+        self.PCT_OF_MAX = 0.14
+        self.STOP_LOSS = 0.92
 
         if os.path.exists(self.filename):
             print("File exists for " + username)
@@ -107,11 +108,10 @@ class Portfolio:
                 self.stocks[symbol] = {'num_shares' : quantity, 'book_value' : amt}
             self.write_to_json()
         else:
-            print("Insufficient funds to buy " + str(quantity) + " shares of " + str(symbol) + " at " + str(price))
+            #print("Insufficient funds to buy " + str(quantity) + " shares of " + str(symbol) + " at " + str(price))
+            pass
 
     def place_sell_order(self, symbol, price):
-
-
 
         # First make sure we have a sufficient number of shares
         if self.have_stock(symbol):
@@ -123,10 +123,6 @@ class Portfolio:
             curr_avg = (self.stocks[symbol]['book_value'] / self.stocks[symbol]['num_shares'])
             diff = (price - curr_avg) / curr_avg
 
-            # if diff < -0.1: # If we are selling at a loss, might as well place a buy order
-            #     self.place_buy_order(symbol, price)
-            #     return
-
             if self.stocks[symbol]['num_shares'] >= quantity:
 
                 self.stocks[symbol]['book_value'] -= curr_avg * quantity
@@ -136,9 +132,12 @@ class Portfolio:
                 self.balance += amt
                 self.write_to_json()
         else:
-            print("We dont have the stock or we tried selling more shares than we own")
+            #print("We dont have the stock or we tried selling more shares than we own")
+            pass
 
-    def write_to_json(self):
+    def write_to_json(self): # We write to the json after we buy and sell, so we can also update the running stop loss
+
+
         f = open(self.filename, "w")
 
         user_info = {'username': self.username,
@@ -149,26 +148,38 @@ class Portfolio:
         f.write(json_obj)
         f.close()
 
+    def get_avg_price(self, symbol):
+        if self.have_stock(symbol):
+            return (self.stocks[symbol]['book_value'] / self.stocks[symbol]['num_shares'])
+        else:
+            return 0
+
+    def get_stop_loss_point(self, symbol):
+        if self.have_stock(symbol):
+            return self.get_avg_price(symbol) * self.STOP_LOSS
+
     def have_stock(self, symbol):
         # We want to check our stocks to see if we have one we are either buying or selling
         if symbol in self.stocks.keys():
             return True
         return False
 
-    def get_net_worth(self):
+    def get_net_worth(self, symbol, price):
 
-        total_bookval = 0
-        for key in self.stocks.keys():
-            total_bookval += self.stocks[key]['book_value']
-        return self.balance + total_bookval
+        if self.have_stock(symbol):
+            total_bookval = self.stocks[symbol]['book_value']    # The current price of the stock, times the number of shares, gives the actual value of all the shares
+            total_worth = self.stocks[symbol]['num_shares'] * price
+            return self.balance + total_bookval, self.balance + total_worth
 
     def get_balance(self):
         return self.balance
 
     def reset_info(self):
-        self.balance = 10000
+        self.balance = 100000
         self.stocks = {}
         self.write_to_json()
+
+    def
 
 def filter_for_day_trading(path):
     """
