@@ -18,6 +18,7 @@ class Environment:
         self.WINDOW_LENGTH = WINDOW_LENGTH
         self.EPOCHS = EPOCHS
         self.BATCH_SIZE = BATCH_SIZE
+        self.AMPLIFIER = 1000
 
         """
         Variables for the environment data (prices of the stock)
@@ -33,10 +34,9 @@ class Environment:
         """
         Parameters that are subject to reset after every training episode
         """
-        self.total_profit = 0
-        self.episode_profit = 0
         self.buy_count = 0
         self.sell_count = 0
+        self.active_positions = 0
         self.history = []
 
 
@@ -62,7 +62,7 @@ class Environment:
             block = self.data[d:t + 1] if d >= 0 else np.append(-d * [self.data[0]], self.data[0:t + 1])  # pad with t0
 
         else: # If we are not training, we just need to grab the last WINDOW_SIZE + 1 # of  elements
-            self.data = self.stock.update_data() # Get the updated minute-by-minute data
+            self.data = self.stock.update_data(self.symbol) # Get the updated minute-by-minute data
             block = self.data[ self.data_len - n : self.data_len + 1 ]
 
         res = []
@@ -70,26 +70,6 @@ class Environment:
             res.append(sigmoid(block[i + 1] - block[i]))
 
         return np.array([res])
-
-
-    def take_action(self, agent, action, t):
-
-        if action == 0:
-            self.history.append('H')
-
-        if action == 1 :  # Buy only if we already have less than 6 active buy orders
-        # Having a limit on the number of buys is a more realistic way of trading
-
-            self.buy_count += 1
-            self.history.append('B')
-            self.p.place_buy_order(self.symbol, self.data[t])
-
-
-        elif action == 2 :  # sell
-
-            self.sell_count += 1
-            self.history.append('S')
-            self.p.place_sell_order(self.symbol, self.data[t])
 
 
     def step(self, agent, action, t):
@@ -106,34 +86,45 @@ class Environment:
         :return: reward value, the more positive -> better
         """
 
-        worth_pre_action = self.p.get_net_worth()
-        self.take_action(agent, action, t)
-        worth_post_action = self.p.get_net_worth()
+        if action == 0: # Hold
 
-        profit = worth_post_action - worth_pre_action
-        self.episode_profit += profit
+            self.history.append('H')
+            return 0
 
+        if action == 1: # Buy
 
-        reward = 0.3
-        if profit > 0:
-            reward += math.log(profit, 2) + 1
-        else:
-            reward -= profit
+            self.buy_count += 1
+            self.history.append('B')
 
+            buy_price = self.stock.vec[t]
+            self.p.place_buy_order(self.symbol, buy_price)
+            diff = self.p.get_avg_price(self.symbol) - buy_price
+            # If we are buying at a lower price than our avg price, give it a reward
+            return (max(diff, 0) + 1) * self.AMPLIFIER * 3
 
-        return reward, profit
+        if action == 2: # Sell
 
+            if not self.p.have_stock(self.symbol):
+                return 0
 
+            self.sell_count += 1
+            self.history.append('S')
+
+            sell_price = self.stock.vec[t]
+            self.p.place_sell_order(self.symbol, sell_price)
+            diff = sell_price - self.p.get_avg_price(self.symbol)
+
+            # If we are selling at a gain, give it a reward
+            return max(diff, 0) * self.AMPLIFIER
 
 
     def reset_params(self):
         """
-        Function to reset some parameters at the begining of every episode
+        Function to reset some parameters at the beginning of every episode
         :return:
         """
 
         self.buy_count = 0
         self.sell_count = 0
         self.history = []
-        self.episode_profit = 0
         self.p.reset_info()
