@@ -1,7 +1,6 @@
 import trader
 from env import Environment
 from agent import Agent
-import time
 import datetime
 import sys
 
@@ -19,7 +18,7 @@ def run_trader():
     a = Agent(WINDOW_SIZE, is_eval=True, model_name=MODEL_NAME)
     e = Environment(WINDOW_SIZE, EPOCHS, BATCH_SIZE, stock_name, train=False)
 
-    state = e.get_state()
+
     t_330pm = datetime.time(hour=15, minute=30)
 
 
@@ -29,9 +28,9 @@ def run_trader():
 
         if now == t_330pm and trader.is_market_open(): # Perform the action near the end of the day
 
+            state = e.get_state()
             action = a.act(state)
-            next_state = e.get_state() # Returns a list of data of size WINDOW_SIZE
-            print(e.stock.data)
+
             if action == 1: # BUY
                 p.place_buy_order('AMD', e.stock.vec[-1])
             elif action == 2: # SELL

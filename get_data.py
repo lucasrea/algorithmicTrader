@@ -9,7 +9,7 @@ class GetData:
     """
     Class to retrieve the training data for a given stock
     """
-    NUM_DAYS = 30
+    NUM_DAYS = 365
     INDICATORS = ['EMA', 'RSI', 'MACD']
     NOTUSED_STATE = ['high', 'low', 'open', 'Adj Close', 'volume']
 
@@ -22,7 +22,7 @@ class GetData:
         if train:
             start =  (datetime.date.today() - datetime.timedelta( self.NUM_DAYS ) )
             end = datetime.datetime.today()
-            self.data = yf.download(stock, start=start, end=end, interval='30m')
+            self.data = yf.download(stock, start=start, end=end, interval='1d')
             self.data.rename(columns={"Close": 'close', "High": 'high', "Low": 'low', 'Volume': 'volume', 'Open': 'open'}, inplace=True)
             print(self.data)
         else:

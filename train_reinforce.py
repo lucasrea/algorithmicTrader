@@ -1,10 +1,11 @@
 from agent import Agent
 from env import Environment
+import sys
 
 
 WINDOW_SIZE = 10
 EPOCHS = 200
-BATCH_SIZE = 50
+BATCH_SIZE = 30
 
 def train_stock_model(agent, stockenv):
 
@@ -21,7 +22,7 @@ def train_stock_model(agent, stockenv):
 
             action = agent.act(state)
             next_state = stockenv.get_state(t = t + 1)
-            reward, profit = stockenv.step(agent, action, t)
+            reward = stockenv.step(agent, action, t)
 
 
             done = True if t == stockenv.data_len - 1 else False
@@ -31,20 +32,20 @@ def train_stock_model(agent, stockenv):
             if len(agent.memory) > BATCH_SIZE:
                 agent.replay(BATCH_SIZE)
 
-        if e % 10 == 0:
+
             agent.model.save("models/model_ep" + str(e))
 
 
-
-        print('    Net Profit :  ' + str(stockenv.p.get_net_worth()))
-        print('Episode Profit :  ' + str(stockenv.episode_profit))
+        price = stockenv.stock.vec[len(stockenv.stock.vec) - 1]
+        book, net = stockenv.p.get_net_worth(stockenv.symbol, price)
+        print('    Net Profit :  ' + str(net - 100000))
         print('History is : ', stockenv.history)
         print('Buys : ' + str(stockenv.buy_count) +'     Sells: ' + str(stockenv.sell_count) + '\n')
 
 
 
-
-env = Environment(WINDOW_SIZE, EPOCHS, BATCH_SIZE, 'AMD')
+stock_symbol = sys.argv[1]
+env = Environment(WINDOW_SIZE, EPOCHS, BATCH_SIZE, stock_symbol)
 agent = Agent(WINDOW_SIZE)
 
 train_stock_model(agent, env)
