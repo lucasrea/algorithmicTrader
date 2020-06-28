@@ -6,6 +6,7 @@ import sys
 WINDOW_SIZE = 10
 EPOCHS = 200
 BATCH_SIZE = 30
+stock_symbol = sys.argv[1]
 
 def train_stock_model(agent, stockenv):
 
@@ -32,8 +33,8 @@ def train_stock_model(agent, stockenv):
             if len(agent.memory) > BATCH_SIZE:
                 agent.replay(BATCH_SIZE)
 
-
-            agent.model.save("models/model_ep" + str(e))
+            dir = stock_symbol +'_models'
+            agent.model.save(dir+ "/model_ep" + str(e))
 
 
         price = stockenv.stock.vec[len(stockenv.stock.vec) - 1]
@@ -44,9 +45,9 @@ def train_stock_model(agent, stockenv):
 
 
 
-stock_symbol = sys.argv[1]
+
 env = Environment(WINDOW_SIZE, EPOCHS, BATCH_SIZE, stock_symbol)
-agent = Agent(WINDOW_SIZE)
+agent = Agent(WINDOW_SIZE, stock_symbol)
 
 train_stock_model(agent, env)
 
